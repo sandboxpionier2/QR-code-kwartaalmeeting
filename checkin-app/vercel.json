@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/checkin/:token", "destination": "/checkin.html?token=:token" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/admin/qr", "destination": "/qr-print.html" }
+  ],
+  "headers": [
+    {
+      "source": "/checkin.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
+  ]
+}

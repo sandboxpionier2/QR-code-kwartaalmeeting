@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Check-in dashboard</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/styles.css" />
 </head>
 <body class="admin">
   <main class="wrap">
@@ -173,7 +173,7 @@
         var statusPill = p.checkedInAt
           ? '<span class="pill ok">Ingecheckt</span>'
           : '<span class="pill pending">Wacht</span>';
-        var time = p.checkedInAt ? new Date(p.checkedInAt + ' UTC').toLocaleTimeString('nl-NL') : '—';
+        var time = p.checkedInAt ? new Date(p.checkedInAt).toLocaleTimeString('nl-NL') : '—';
         return '<tr>' +
           '<td>' + escHtml(p.name) + '</td>' +
           '<td>' + escHtml(p.assignedWorkshopName || '—') + '</td>' +

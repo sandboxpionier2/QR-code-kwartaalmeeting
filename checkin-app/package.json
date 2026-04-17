@@ -3,16 +3,17 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "QR-code check-in app voor de kwartaalmeeting workshops",
+  "description": "QR-code check-in app voor de kwartaalmeeting (Vercel + Firestore)",
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "node --watch server/index.js",
-    "seed-tokens": "node server/seed-tokens.js"
+    "dev": "vercel dev",
+    "deploy": "vercel --prod",
+    "lint": "node --check api/health.js && node --check api/checkin/[token].js && node --check api/admin/participants.js && node --check api/admin/generate-tokens.js && node --check api/qr/[token].js && node --check lib/checkin.js && node --check lib/firestore.js && node --check lib/auth.js && node --check lib/config.js"
   },
   "dependencies": {
-    "better-sqlite3": "^12.8.0",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
+    "firebase-admin": "^13.5.0",
     "qrcode": "^1.5.4"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

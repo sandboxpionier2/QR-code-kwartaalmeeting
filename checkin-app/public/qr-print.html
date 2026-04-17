@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>QR-codes printen</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/styles.css" />
 </head>
 <body class="qr-print">
   <div class="no-print" style="max-width:1000px; margin:16px auto; padding:0 18px; display:flex; gap:8px; align-items:center; flex-wrap:wrap">
@@ -53,7 +53,7 @@
           var html = list.map(function (p) {
             return (
               '<div class="qr-card">' +
-                '<img src="/qr/' + encodeURIComponent(p.token) + '.png" alt="QR" />' +
+                '<img src="/api/qr/' + encodeURIComponent(p.token) + '" alt="QR" />' +
                 '<h2>' + escHtml(p.name) + '</h2>' +
                 '<p class="workshop">' + escHtml(p.assignedWorkshopName || '—') + '</p>' +
                 '<p style="font-size:11px; color:#888; word-break:break-all">' + escHtml(p.qrUrl || '') + '</p>' +

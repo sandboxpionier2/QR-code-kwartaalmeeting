@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Welkom bij de kwartaalmeeting</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <div id="view"></div>
+  </main>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var token = (params.get('token') || '').trim();
+      var view = document.getElementById('view');
+
+      function esc(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function renderError(title, body) {
+        view.innerHTML =
+          '<div class="card error">' +
+            '<div class="big-icon">⚠️</div>' +
+            '<h1>' + esc(title) + '</h1>' +
+            '<p>' + esc(body) + '</p>' +
+          '</div>';
+      }
+
+      function renderWelcome(info, statusText, statusClass) {
+        view.innerHTML =
+          '<div class="card welcome">' +
+            '<div class="big-icon">👋</div>' +
+            '<p class="eyebrow">Welkom bij de kwartaalmeeting</p>' +
+            '<h1>' + esc(info.name) + '</h1>' +
+            '<div class="workshop-block">' +
+              '<p class="eyebrow">Jouw workshop</p>' +
+              '<p class="workshop-name">' + esc(info.assignedWorkshopName || info.assignedWorkshopId || 'Wordt nog bekend gemaakt') + '</p>' +
+            '</div>' +
+            (info.welcomeInfoText ? '<div class="info-block"><p>' + esc(info.welcomeInfoText) + '</p></div>' : '') +
+            '<div id="status" class="status ' + statusClass + '">' + esc(statusText) + '</div>' +
+          '</div>';
+      }
+
+      if (!token) {
+        renderError('Geen token', 'Deze link bevat geen check-in token. Scan je persoonlijke QR-code opnieuw.');
+        return;
+      }
+
+      // Direct inchecken via POST. De server geeft ons meteen de
+      // deelnemer-info + de check-in status terug.
+      fetch('/api/checkin/' + encodeURIComponent(token), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+        .then(function (r) {
+          return r.json().then(function (j) { return { status: r.status, body: j }; });
+        })
+        .then(function (res) {
+          if (res.status === 404) {
+            renderError('QR-code niet herkend', 'Dit ticket kon niet worden gevonden. Loop even langs de organisatie zodat we je kunnen helpen.');
+            return;
+          }
+          if (res.status >= 400 || !res.body.ok) {
+            renderError('Check-in mislukt', (res.body && res.body.error) || 'Er ging iets mis. Probeer opnieuw of meld je bij de organisatie.');
+            return;
+          }
+          var info = res.body.participant || {};
+          var text, cls;
+          if (res.body.alreadyCheckedIn) {
+            text = '✓ Je was al ingecheckt. Veel plezier!';
+            cls = 'info';
+          } else {
+            text = '✓ Succesvol ingecheckt. Veel plezier!';
+            cls = 'success';
+          }
+          renderWelcome(info, text, cls);
+        })
+        .catch(function () {
+          renderError('Geen verbinding', 'Kan de server niet bereiken. Controleer je verbinding en probeer het opnieuw.');
+        });
+    })();
+  </script>
+</body>
+</html>
