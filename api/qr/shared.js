@@ -1,6 +1,9 @@
 import QRCode from 'qrcode';
 import { getPublicUrl } from '../../lib/config.js';
 
+const DUCK_QR_DARK = '#0b2f6b';
+const DUCK_QR_LIGHT = '#fffdf4';
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -14,6 +17,10 @@ export default async function handler(req, res) {
       errorCorrectionLevel: 'M',
       margin: 1,
       width: size,
+      color: {
+        dark: DUCK_QR_DARK,
+        light: DUCK_QR_LIGHT,
+      },
     });
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=86400, immutable');

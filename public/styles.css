@@ -340,6 +340,7 @@ body.qr-print {
   text-align: center;
   page-break-inside: avoid;
   break-inside: avoid;
+  position: relative;
 }
 .qr-card img {
   width: 220px;
@@ -350,6 +351,29 @@ body.qr-print {
 .qr-card h2 { margin: 10px 0 4px; font-size: 18px; }
 .qr-card p  { margin: 2px 0; color: #444; font-size: 13px; }
 .qr-card .workshop { color: #2d5bff; font-weight: 600; font-size: 14px; }
+
+.duck-theme-card {
+  background: linear-gradient(180deg, #fffef8 0%, #f7f9ff 100%);
+  border: 1px solid #d8e0f5;
+}
+
+.duck-qr {
+  border: 8px solid #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(11, 47, 107, 0.14);
+}
+
+.duck-deco {
+  position: absolute;
+  font-size: 22px;
+  line-height: 1;
+  opacity: 0.95;
+}
+
+.duck-deco.tl { top: 10px; left: 12px; }
+.duck-deco.tr { top: 10px; right: 12px; }
+.duck-deco.bl { bottom: 12px; left: 12px; }
+.duck-deco.br { bottom: 12px; right: 12px; }
 
 @media print {
   .no-print { display: none !important; }

@@ -1,6 +1,9 @@
 import QRCode from 'qrcode';
 import { getPublicUrl } from '../../lib/config.js';
 
+const DUCK_QR_DARK = '#0b2f6b';
+const DUCK_QR_LIGHT = '#fffdf4';
+
 // GET /api/qr/:token  → PNG QR-afbeelding die naar /checkin/:token wijst.
 // Publiek toegankelijk zodat de print-pagina ze zonder login kan laden
 // (tokens zijn al niet-raden en werken als "capability URL").
@@ -19,6 +22,10 @@ export default async function handler(req, res) {
       errorCorrectionLevel: 'M',
       margin: 1,
       width: size,
+      color: {
+        dark: DUCK_QR_DARK,
+        light: DUCK_QR_LIGHT,
+      },
     });
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
