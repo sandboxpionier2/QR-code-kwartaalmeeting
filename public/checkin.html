@@ -42,48 +42,137 @@
               '<p class="eyebrow">Jouw workshop</p>' +
               '<p class="workshop-name">' + esc(info.assignedWorkshopName || info.assignedWorkshopId || 'Wordt nog bekend gemaakt') + '</p>' +
             '</div>' +
+            (info.workshopInfo ? '<div class="info-block"><p>' + esc(info.workshopInfo) + '</p></div>' : '') +
             (info.welcomeInfoText ? '<div class="info-block"><p>' + esc(info.welcomeInfoText) + '</p></div>' : '') +
             '<div id="status" class="status ' + statusClass + '">' + esc(statusText) + '</div>' +
           '</div>';
       }
 
-      if (!token) {
-        renderError('Geen token', 'Deze link bevat geen check-in token. Scan je persoonlijke QR-code opnieuw.');
-        return;
+      function renderSelect(participants) {
+        var options = (participants || []).map(function (p) {
+          return '<option value="' + esc(p.participantId).replace(/"/g, '&quot;') + '">' + esc(p.name) + '</option>';
+        }).join('');
+
+        view.innerHTML =
+          '<div class="card welcome">' +
+            '<div class="big-icon">🎫</div>' +
+            '<p class="eyebrow">Welkom bij de kwartaalmeeting</p>' +
+            '<h1>Zoek je naam</h1>' +
+            '<p class="small">Selecteer je naam en ga door naar je persoonlijke ticket.</p>' +
+            '<label for="participantId" style="display:block; text-align:left; margin:16px 0 8px; font-weight:600;">Jouw naam</label>' +
+            '<select id="participantId" style="width:100%; padding:12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:15px;">' +
+              '<option value="">-- Kies je naam --</option>' +
+              options +
+            '</select>' +
+            '<button id="continueBtn" class="primary" style="width:100%; margin-top:14px;">Ga naar mijn ticket</button>' +
+            '<div id="formStatus" class="status pending" style="display:none"></div>' +
+          '</div>';
+
+        document.getElementById('continueBtn').addEventListener('click', function () {
+          var participantId = document.getElementById('participantId').value;
+          var statusEl = document.getElementById('formStatus');
+          if (!participantId) {
+            statusEl.style.display = '';
+            statusEl.className = 'status error';
+            statusEl.textContent = 'Kies eerst je naam uit de lijst.';
+            return;
+          }
+          statusEl.style.display = '';
+          statusEl.className = 'status pending';
+          statusEl.textContent = 'Ticket laden...';
+
+          fetch('/api/checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ participantId: participantId })
+          })
+            .then(function (r) {
+              return r.json().then(function (j) { return { status: r.status, body: j }; });
+            })
+            .then(function (res) {
+              if (res.status >= 400 || !res.body.ok) {
+                statusEl.className = 'status error';
+                statusEl.textContent = (res.body && res.body.error) || 'Kon je ticket niet laden.';
+                return;
+              }
+              var info = res.body.participant || {};
+              var text;
+              var cls;
+              if (res.body.alreadyCheckedIn) {
+                text = '✓ Je was al ingecheckt. Veel plezier!';
+                cls = 'info';
+              } else {
+                text = '✓ Inchecken gelukt. Veel plezier!';
+                cls = 'success';
+              }
+              renderWelcome(info, text, cls);
+            })
+            .catch(function () {
+              statusEl.className = 'status error';
+              statusEl.textContent = 'Geen verbinding met de server.';
+            });
+        });
       }
 
-      // Direct inchecken via POST. De server geeft ons meteen de
-      // deelnemer-info + de check-in status terug.
-      fetch('/api/checkin/' + encodeURIComponent(token), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-        .then(function (r) {
-          return r.json().then(function (j) { return { status: r.status, body: j }; });
+      function runSharedMode() {
+        view.innerHTML =
+          '<div class="card">' +
+            '<div class="big-icon">⏳</div>' +
+            '<h1>Laden...</h1>' +
+            '<p class="small">We laden de deelnemerslijst.</p>' +
+          '</div>';
+
+        fetch('/api/checkin')
+          .then(function (r) {
+            return r.json().then(function (j) { return { status: r.status, body: j }; });
+          })
+          .then(function (res) {
+            if (res.status >= 400 || !res.body.ok) {
+              renderError('Laden mislukt', (res.body && res.body.error) || 'Kan de deelnemerslijst niet ophalen.');
+              return;
+            }
+            renderSelect(res.body.participants || []);
+          })
+          .catch(function () {
+            renderError('Geen verbinding', 'Kan de server niet bereiken. Controleer je verbinding en probeer opnieuw.');
+          });
+      }
+
+      function runTokenMode() {
+        fetch('/api/checkin/' + encodeURIComponent(token), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
         })
-        .then(function (res) {
-          if (res.status === 404) {
-            renderError('QR-code niet herkend', 'Dit ticket kon niet worden gevonden. Loop even langs de organisatie zodat we je kunnen helpen.');
-            return;
-          }
-          if (res.status >= 400 || !res.body.ok) {
-            renderError('Check-in mislukt', (res.body && res.body.error) || 'Er ging iets mis. Probeer opnieuw of meld je bij de organisatie.');
-            return;
-          }
-          var info = res.body.participant || {};
-          var text, cls;
-          if (res.body.alreadyCheckedIn) {
-            text = '✓ Je was al ingecheckt. Veel plezier!';
-            cls = 'info';
-          } else {
-            text = '✓ Succesvol ingecheckt. Veel plezier!';
-            cls = 'success';
-          }
-          renderWelcome(info, text, cls);
-        })
-        .catch(function () {
-          renderError('Geen verbinding', 'Kan de server niet bereiken. Controleer je verbinding en probeer het opnieuw.');
-        });
+          .then(function (r) {
+            return r.json().then(function (j) { return { status: r.status, body: j }; });
+          })
+          .then(function (res) {
+            if (res.status === 404) {
+              renderError('QR-code niet herkend', 'Dit ticket kon niet worden gevonden. Loop even langs de organisatie zodat we je kunnen helpen.');
+              return;
+            }
+            if (res.status >= 400 || !res.body.ok) {
+              renderError('Check-in mislukt', (res.body && res.body.error) || 'Er ging iets mis. Probeer opnieuw of meld je bij de organisatie.');
+              return;
+            }
+            var info = res.body.participant || {};
+            var text, cls;
+            if (res.body.alreadyCheckedIn) {
+              text = '✓ Je was al ingecheckt. Veel plezier!';
+              cls = 'info';
+            } else {
+              text = '✓ Inchecken gelukt. Veel plezier!';
+              cls = 'success';
+            }
+            renderWelcome(info, text, cls);
+          })
+          .catch(function () {
+            renderError('Geen verbinding', 'Kan de server niet bereiken. Controleer je verbinding en probeer opnieuw.');
+          });
+      }
+
+      if (token) runTokenMode();
+      else runSharedMode();
     })();
   </script>
 </body>

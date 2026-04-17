@@ -27,10 +27,27 @@
           </div>
           <div class="actions">
             <button class="secondary" id="refreshBtn">Ververs</button>
-            <button class="primary" id="generateBtn">Genereer ontbrekende QR-tokens</button>
             <a class="secondary" id="qrLink" href="/admin/qr" target="_blank" rel="noopener">QR-printpagina openen</a>
             <button class="secondary" id="logoutBtn">Uitloggen</button>
           </div>
+        </div>
+
+        <div class="table-wrap" style="margin-bottom: 16px; padding: 14px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+            <div style="font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600;">Gedeelde check-in URL</div>
+            <button class="secondary" id="copySharedUrlBtn" type="button">Kopieer check-in URL</button>
+          </div>
+          <div id="sharedUrl" style="margin-top:6px; word-break:break-all; font-size:15px;"></div>
+          <div id="copySharedUrlStatus" style="margin-top:8px; color:var(--muted); font-size:13px;"></div>
+        </div>
+
+        <div class="table-wrap checklist-wrap" style="margin-bottom: 16px; padding: 14px 16px;">
+          <div class="checklist-head">
+            <div style="font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600;">Event-day checklist</div>
+            <button class="secondary" id="resetChecklistBtn" type="button">Reset checklist</button>
+          </div>
+          <div id="checklistProgress" class="checklist-progress"></div>
+          <div id="eventChecklist" class="event-checklist"></div>
         </div>
 
         <div id="stats" class="stats-grid"></div>
@@ -67,7 +84,15 @@
 
   <script>
     var STORAGE_KEY = 'checkin-admin-pw';
-    var state = { participants: [], workshops: [], stats: null, meetingId: '' };
+    var CHECKLIST_STORAGE_KEY = 'checkin-event-checklist-v1';
+    var CHECKLIST_ITEMS = [
+      { id: 'print_qr', label: 'QR-printpagina geopend en QR geprint/opgeslagen' },
+      { id: 'share_qr', label: 'Gedeelde QR zichtbaar op locatie of gedeeld met collega\'s' },
+      { id: 'test_scan', label: 'Testscan uitgevoerd (scan > naam kiezen > ticket zichtbaar)' },
+      { id: 'dashboard_live', label: 'Dashboard open op organisatie-laptop/tablet' },
+      { id: 'network_ready', label: 'Internetverbinding gecontroleerd op locatie' }
+    ];
+    var state = { participants: [], workshops: [], stats: null, meetingId: '', sharedCheckinUrl: '' };
 
     function $(id) { return document.getElementById(id); }
 
@@ -79,6 +104,21 @@
     }
     function clearPw() {
       try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+    }
+    function getChecklistKey() {
+      return CHECKLIST_STORAGE_KEY + ':' + (state.meetingId || 'default');
+    }
+    function loadChecklistState() {
+      try {
+        return JSON.parse(localStorage.getItem(getChecklistKey()) || '{}');
+      } catch {
+        return {};
+      }
+    }
+    function saveChecklistState(checklistState) {
+      try {
+        localStorage.setItem(getChecklistKey(), JSON.stringify(checklistState || {}));
+      } catch {}
     }
 
     function authHeaders(extra) {
@@ -119,6 +159,7 @@
             state.workshops = data.workshops || [];
             state.stats = data.stats || null;
             state.meetingId = data.meetingId || '';
+            state.sharedCheckinUrl = data.sharedCheckinUrl || '';
             render();
             return true;
           });
@@ -132,6 +173,8 @@
     function render() {
       $('meetingLabel').textContent = state.meetingId;
       $('lastUpdate').textContent = 'Laatst bijgewerkt: ' + new Date().toLocaleTimeString('nl-NL');
+      $('sharedUrl').textContent = state.sharedCheckinUrl || 'Niet beschikbaar';
+      renderChecklist();
 
       // Stats
       var s = state.stats || { totalParticipants: 0, totalCheckedIn: 0, byWorkshop: [] };
@@ -155,6 +198,33 @@
       wsSel.value = current;
 
       renderRows();
+    }
+
+    function renderChecklist() {
+      var checklistState = loadChecklistState();
+      var doneCount = 0;
+      var html = CHECKLIST_ITEMS.map(function (item) {
+        var done = !!checklistState[item.id];
+        if (done) doneCount += 1;
+        return '<label class="checklist-item">' +
+          '<input type="checkbox" data-check-id="' + escAttr(item.id) + '"' + (done ? ' checked' : '') + ' />' +
+          '<span>' + escHtml(item.label) + '</span>' +
+          '</label>';
+      }).join('');
+
+      $('eventChecklist').innerHTML = html;
+      $('checklistProgress').textContent = doneCount + ' / ' + CHECKLIST_ITEMS.length + ' afgerond';
+
+      var checkboxes = $('eventChecklist').querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach(function (input) {
+        input.addEventListener('change', function () {
+          var id = input.getAttribute('data-check-id');
+          var next = loadChecklistState();
+          next[id] = !!input.checked;
+          saveChecklistState(next);
+          renderChecklist();
+        });
+      });
     }
 
     function renderRows() {
@@ -217,17 +287,45 @@
       showLogin();
     });
     $('refreshBtn').addEventListener('click', fetchData);
-    $('generateBtn').addEventListener('click', function () {
-      fetch('/api/admin/generate-tokens', {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-      })
-        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
-        .then(function (res) {
-          if (!res.ok) { alert(res.body.error || 'Mislukt'); return; }
-          alert('Nieuwe tokens aangemaakt: ' + res.body.created + '\nTotaal: ' + res.body.total);
-          fetchData();
-        });
+    $('copySharedUrlBtn').addEventListener('click', function () {
+      var url = state.sharedCheckinUrl || '';
+      if (!url) {
+        $('copySharedUrlStatus').textContent = 'Geen check-in URL beschikbaar.';
+        return;
+      }
+
+      function setCopyStatus(text) {
+        $('copySharedUrlStatus').textContent = text;
+      }
+
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(url)
+          .then(function () {
+            setCopyStatus('URL gekopieerd.');
+          })
+          .catch(function () {
+            setCopyStatus('Kopieren mislukt, kopieer handmatig.');
+          });
+      } else {
+        try {
+          var helper = document.createElement('textarea');
+          helper.value = url;
+          helper.setAttribute('readonly', '');
+          helper.style.position = 'absolute';
+          helper.style.left = '-9999px';
+          document.body.appendChild(helper);
+          helper.select();
+          document.execCommand('copy');
+          document.body.removeChild(helper);
+          setCopyStatus('URL gekopieerd.');
+        } catch {
+          setCopyStatus('Kopieren mislukt, kopieer handmatig.');
+        }
+      }
+    });
+    $('resetChecklistBtn').addEventListener('click', function () {
+      saveChecklistState({});
+      renderChecklist();
     });
     ['filterInput', 'workshopFilter', 'statusFilter'].forEach(function (id) {
       $(id).addEventListener('input', renderRows);

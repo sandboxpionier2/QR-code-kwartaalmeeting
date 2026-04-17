@@ -18,6 +18,7 @@ export default async function handler(req, res) {
     const overview = await getAdminOverview(MEETING_ID);
     const stats = computeStats(overview);
     const publicUrl = getPublicUrl();
+    const sharedCheckinUrl = `${publicUrl}/checkin`;
 
     const participants = overview.map((p) => ({
       ...p,
@@ -29,6 +30,7 @@ export default async function handler(req, res) {
       ok: true,
       meetingId: MEETING_ID,
       publicUrl,
+      sharedCheckinUrl,
       workshops: WORKSHOPS,
       stats,
       participants,

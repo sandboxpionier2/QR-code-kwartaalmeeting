@@ -284,6 +284,43 @@ button.secondary, a.secondary {
 
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 
+.checklist-wrap {
+  overflow: visible;
+}
+
+.checklist-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.checklist-progress {
+  margin: 10px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.event-checklist {
+  display: grid;
+  gap: 8px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.checklist-item input {
+  margin-top: 2px;
+}
+
 /* --- QR print view --- */
 body.qr-print {
   background: #fff;

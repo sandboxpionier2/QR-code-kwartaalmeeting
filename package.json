@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vercel dev",
     "deploy": "vercel --prod",
-    "lint": "node --check api/health.js && node --check api/checkin/[token].js && node --check api/admin/participants.js && node --check api/admin/generate-tokens.js && node --check api/qr/[token].js && node --check lib/checkin.js && node --check lib/firestore.js && node --check lib/auth.js && node --check lib/config.js"
+    "lint": "node --check api/health.js && node --check api/checkin/[token].js && node --check api/checkin/index.js && node --check api/admin/participants.js && node --check api/admin/generate-tokens.js && node --check api/qr/[token].js && node --check api/qr/shared.js && node --check lib/checkin.js && node --check lib/firestore.js && node --check lib/auth.js && node --check lib/config.js"
   },
   "dependencies": {
     "firebase-admin": "^13.5.0",

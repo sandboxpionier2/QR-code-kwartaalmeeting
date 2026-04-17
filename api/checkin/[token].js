@@ -27,6 +27,7 @@ export default async function handler(req, res) {
       name: participant.name,
       assignedWorkshopId: participant.assignedWorkshopId,
       assignedWorkshopName: workshopName(participant.assignedWorkshopId),
+      workshopInfo: participant.workshopInfo || '',
       welcomeInfoText: WELCOME_INFO_TEXT,
     };
 

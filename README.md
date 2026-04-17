@@ -4,11 +4,11 @@ Losstaande QR-code check-in applicatie voor op de dag van de kwartaalmeeting. Dr
 
 ## Hoe het werkt
 
-- Elke deelnemer uit de aanmeld-app krijgt een uniek, niet-raden token.
-- Een persoonlijke QR-code wijst naar `PUBLIC_URL/checkin/<token>`.
-- Bij scannen wordt de deelnemer automatisch ingecheckt en ziet hij/zij een welkomstscherm met z'n naam en de toegewezen workshop.
+- Er is één gedeelde QR-code die verwijst naar `PUBLIC_URL/checkin`.
+- Bij scannen ziet de deelnemer een welkom-scherm en kiest die zijn/haar naam uit de deelnemerslijst.
+- Daarna komt de deelnemer op een persoonlijk ticket met toegewezen workshop en extra info.
 - Een admin-dashboard op `/admin` (wachtwoord) toont live wie al binnen is, per workshop.
-- Een printbare pagina op `/admin/qr` zet alle QR-codes op A4 om uit te delen of als PDF op te slaan.
+- Een printbare pagina op `/admin/qr` bevat de gedeelde QR-code op A4.
 
 ## Firestore schema
 
@@ -92,10 +92,17 @@ Klik **Deploy**. Vercel bouwt en host de app.
 ### 5) Voorbereiden op de dag zelf
 
 1. Open `https://<je-app>.vercel.app/admin` en log in.
-2. Klik **"Genereer ontbrekende QR-tokens"** — maakt per deelnemer een token aan (idempotent).
-3. Klik **"QR-printpagina openen"** en print of sla op als PDF.
-4. Verspreid de QR-codes (uitprinten + uitdelen, of digitaal mailen).
-5. Zorg dat je dashboard open hebt staan op de dag — het ververst zichzelf elke 15 seconden.
+2. Klik **"QR-printpagina openen"** en print of sla op als PDF.
+3. Hang of deel deze ene QR-code.
+4. Zorg dat je dashboard open hebt staan op de dag — het ververst zichzelf elke 15 seconden.
+
+### Event-day checklist (organisatie)
+
+- [ ] QR-printpagina geopend en QR geprint/opgeslagen.
+- [ ] Gedeelde QR zichtbaar op locatie of gedeeld met collega's.
+- [ ] Testscan gedaan: scannen → naam kiezen → ticket zichtbaar.
+- [ ] Dashboard open op organisatie-laptop/tablet.
+- [ ] Internetverbinding op locatie gecontroleerd.
 
 ## Lokaal draaien
 
@@ -111,9 +118,12 @@ npx vercel dev                # vereist Vercel CLI (npm i -g vercel)
 
 | Route | Methode | Doel |
 | --- | --- | --- |
-| `/checkin/:token` | GET (HTML) | Welkomstscherm (rewrite naar `checkin.html`) |
-| `/api/checkin/:token` | POST | Registreert check-in, geeft deelnemer-info terug |
-| `/api/checkin/:token` | GET | Alleen info, nog niet inchecken |
+| `/checkin` | GET (HTML) | Gedeelde check-in pagina (rewrite naar `checkin.html`) |
+| `/api/checkin` | GET | Haalt deelnemerslijst op voor naamselectie |
+| `/api/checkin` | POST | Registreert check-in op basis van geselecteerde deelnemer |
+| `/api/qr/shared` | GET | PNG QR-afbeelding voor gedeelde check-in |
+| `/checkin/:token` | GET (HTML) | Legacy persoonlijke check-in URL |
+| `/api/checkin/:token` | POST/GET | Legacy token-flow (backwards compatible) |
 | `/api/qr/:token` | GET | PNG QR-afbeelding voor die token |
 | `/admin` | GET (HTML) | Dashboard (rewrite naar `admin.html`) |
 | `/admin/qr` | GET (HTML) | Print-pagina (rewrite naar `qr-print.html`) |
