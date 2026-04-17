@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Check-in dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body class="admin">
+  <main class="wrap">
+    <div class="admin-shell">
+
+      <div id="login-view" class="login-wrap" style="display:none">
+        <h1 style="margin-top:0">Organisatie login</h1>
+        <label for="pw">Wachtwoord</label>
+        <input id="pw" type="password" autocomplete="current-password" />
+        <button class="primary" id="loginBtn" style="width:100%">Inloggen</button>
+        <p id="loginError" class="status error" style="display:none; margin-top:12px"></p>
+      </div>
+
+      <div id="dashboard-view" style="display:none">
+        <div class="admin-header">
+          <div>
+            <h1>Check-in dashboard</h1>
+            <div class="muted">Meeting: <span id="meetingLabel"></span> · <span id="lastUpdate"></span></div>
+          </div>
+          <div class="actions">
+            <button class="secondary" id="refreshBtn">Ververs</button>
+            <button class="primary" id="generateBtn">Genereer ontbrekende QR-tokens</button>
+            <a class="secondary" id="qrLink" href="/admin/qr" target="_blank" rel="noopener">QR-printpagina openen</a>
+            <button class="secondary" id="logoutBtn">Uitloggen</button>
+          </div>
+        </div>
+
+        <div id="stats" class="stats-grid"></div>
+
+        <div style="margin:16px 0 8px; display:flex; gap:8px; align-items:center">
+          <input id="filterInput" type="search" placeholder="Zoek op naam…" style="flex:1; padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:14px" />
+          <select id="workshopFilter" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:14px">
+            <option value="">Alle workshops</option>
+          </select>
+          <select id="statusFilter" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:14px">
+            <option value="">Alle status</option>
+            <option value="in">Alleen ingecheckt</option>
+            <option value="out">Nog niet ingecheckt</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table class="participants" id="participantsTable">
+            <thead>
+              <tr>
+                <th>Naam</th>
+                <th>Workshop</th>
+                <th>Status</th>
+                <th>Check-in tijd</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    var STORAGE_KEY = 'checkin-admin-pw';
+    var state = { participants: [], workshops: [], stats: null, meetingId: '' };
+
+    function $(id) { return document.getElementById(id); }
+
+    function getPw() {
+      try { return sessionStorage.getItem(STORAGE_KEY) || ''; } catch { return ''; }
+    }
+    function setPw(pw) {
+      try { sessionStorage.setItem(STORAGE_KEY, pw); } catch {}
+    }
+    function clearPw() {
+      try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+    }
+
+    function authHeaders(extra) {
+      var h = Object.assign({ 'x-admin-password': getPw() }, extra || {});
+      return h;
+    }
+
+    function showLogin(errorMsg) {
+      $('login-view').style.display = '';
+      $('dashboard-view').style.display = 'none';
+      var e = $('loginError');
+      if (errorMsg) { e.style.display = ''; e.textContent = errorMsg; }
+      else { e.style.display = 'none'; }
+    }
+
+    function showDashboard() {
+      $('login-view').style.display = 'none';
+      $('dashboard-view').style.display = '';
+    }
+
+    function tryLoadDashboard() {
+      if (!getPw()) { showLogin(); return; }
+      fetchData().then(function (ok) {
+        if (ok) showDashboard();
+      });
+    }
+
+    function fetchData() {
+      return fetch('/api/admin/participants', { headers: authHeaders() })
+        .then(function (r) {
+          if (r.status === 401) {
+            clearPw();
+            showLogin('Onjuist wachtwoord.');
+            return false;
+          }
+          return r.json().then(function (data) {
+            state.participants = data.participants || [];
+            state.workshops = data.workshops || [];
+            state.stats = data.stats || null;
+            state.meetingId = data.meetingId || '';
+            render();
+            return true;
+          });
+        })
+        .catch(function () {
+          showLogin('Kan server niet bereiken.');
+          return false;
+        });
+    }
+
+    function render() {
+      $('meetingLabel').textContent = state.meetingId;
+      $('lastUpdate').textContent = 'Laatst bijgewerkt: ' + new Date().toLocaleTimeString('nl-NL');
+
+      // Stats
+      var s = state.stats || { totalParticipants: 0, totalCheckedIn: 0, byWorkshop: [] };
+      var pct = s.totalParticipants ? Math.round((s.totalCheckedIn / s.totalParticipants) * 100) : 0;
+
+      var cards = [];
+      cards.push(statCard('Ingecheckt', s.totalCheckedIn + ' / ' + s.totalParticipants, pct));
+      (s.byWorkshop || []).forEach(function (w) {
+        var p = w.totalAssigned ? Math.round((w.totalCheckedIn / w.totalAssigned) * 100) : 0;
+        cards.push(statCard(w.workshopName, w.totalCheckedIn + ' / ' + w.totalAssigned, p));
+      });
+      $('stats').innerHTML = cards.join('');
+
+      // Workshop filter options
+      var wsSel = $('workshopFilter');
+      var current = wsSel.value;
+      wsSel.innerHTML = '<option value="">Alle workshops</option>' +
+        state.workshops.map(function (w) {
+          return '<option value="' + escAttr(w.id) + '">' + escHtml(w.name) + '</option>';
+        }).join('');
+      wsSel.value = current;
+
+      renderRows();
+    }
+
+    function renderRows() {
+      var q = ($('filterInput').value || '').toLowerCase().trim();
+      var wsId = $('workshopFilter').value;
+      var status = $('statusFilter').value;
+      var rows = state.participants.filter(function (p) {
+        if (q && (p.name || '').toLowerCase().indexOf(q) === -1) return false;
+        if (wsId && p.assignedWorkshopId !== wsId) return false;
+        if (status === 'in' && !p.checkedInAt) return false;
+        if (status === 'out' && p.checkedInAt) return false;
+        return true;
+      });
+
+      var tbody = $('participantsTable').querySelector('tbody');
+      tbody.innerHTML = rows.map(function (p) {
+        var statusPill = p.checkedInAt
+          ? '<span class="pill ok">Ingecheckt</span>'
+          : '<span class="pill pending">Wacht</span>';
+        var time = p.checkedInAt ? new Date(p.checkedInAt + ' UTC').toLocaleTimeString('nl-NL') : '—';
+        return '<tr>' +
+          '<td>' + escHtml(p.name) + '</td>' +
+          '<td>' + escHtml(p.assignedWorkshopName || '—') + '</td>' +
+          '<td>' + statusPill + '</td>' +
+          '<td>' + time + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    function statCard(label, value, pct) {
+      return (
+        '<div class="stat-card">' +
+          '<div class="label">' + escHtml(label) + '</div>' +
+          '<div class="value">' + escHtml(value) + '</div>' +
+          '<div class="bar"><span style="width:' + Math.max(0, Math.min(100, pct)) + '%"></span></div>' +
+        '</div>'
+      );
+    }
+
+    function escHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function escAttr(s) {
+      return escHtml(s).replace(/"/g, '&quot;');
+    }
+
+    // Wire up
+    $('loginBtn').addEventListener('click', function () {
+      var pw = $('pw').value;
+      if (!pw) { showLogin('Vul een wachtwoord in.'); return; }
+      setPw(pw);
+      tryLoadDashboard();
+    });
+    $('pw').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') $('loginBtn').click();
+    });
+    $('logoutBtn').addEventListener('click', function () {
+      clearPw();
+      showLogin();
+    });
+    $('refreshBtn').addEventListener('click', fetchData);
+    $('generateBtn').addEventListener('click', function () {
+      fetch('/api/admin/generate-tokens', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { alert(res.body.error || 'Mislukt'); return; }
+          alert('Nieuwe tokens aangemaakt: ' + res.body.created + '\nTotaal: ' + res.body.total);
+          fetchData();
+        });
+    });
+    ['filterInput', 'workshopFilter', 'statusFilter'].forEach(function (id) {
+      $(id).addEventListener('input', renderRows);
+      $(id).addEventListener('change', renderRows);
+    });
+
+    // Auto-refresh iedere 15s
+    setInterval(function () {
+      if (getPw() && $('dashboard-view').style.display !== 'none') fetchData();
+    }, 15000);
+
+    tryLoadDashboard();
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "checkin-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "QR-code check-in app voor de kwartaalmeeting workshops",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "seed-tokens": "node server/seed-tokens.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4"
+  }
+}

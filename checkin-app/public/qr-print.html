@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QR-codes printen</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body class="qr-print">
+  <div class="no-print" style="max-width:1000px; margin:16px auto; padding:0 18px; display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+    <h1 style="margin:0; font-size:20px">Persoonlijke QR-codes</h1>
+    <span id="countLabel" style="color:#666"></span>
+    <span style="flex:1"></span>
+    <button class="primary" onclick="window.print()">Printen</button>
+    <a class="secondary" href="/admin">← Terug naar dashboard</a>
+  </div>
+
+  <div id="login-view" class="login-wrap no-print" style="display:none">
+    <h1 style="margin-top:0">Login</h1>
+    <label for="pw">Wachtwoord</label>
+    <input id="pw" type="password" />
+    <button class="primary" id="loginBtn" style="width:100%">Laden</button>
+    <p id="loginError" class="status error" style="display:none; margin-top:12px"></p>
+  </div>
+
+  <div class="qr-grid" id="grid"></div>
+
+  <script>
+    var STORAGE_KEY = 'checkin-admin-pw';
+    function getPw() { try { return sessionStorage.getItem(STORAGE_KEY) || ''; } catch { return ''; } }
+    function setPw(p) { try { sessionStorage.setItem(STORAGE_KEY, p); } catch {} }
+
+    function escHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function load() {
+      var pw = getPw();
+      if (!pw) { showLogin(); return; }
+      fetch('/api/admin/participants', { headers: { 'x-admin-password': pw } })
+        .then(function (r) {
+          if (r.status === 401) { showLogin('Onjuist wachtwoord.'); return null; }
+          return r.json();
+        })
+        .then(function (data) {
+          if (!data) return;
+          document.getElementById('login-view').style.display = 'none';
+          var list = (data.participants || []).filter(function (p) { return p.token; });
+          document.getElementById('countLabel').textContent =
+            '(' + list.length + ' deelnemers met QR)';
+
+          var html = list.map(function (p) {
+            return (
+              '<div class="qr-card">' +
+                '<img src="/qr/' + encodeURIComponent(p.token) + '.png" alt="QR" />' +
+                '<h2>' + escHtml(p.name) + '</h2>' +
+                '<p class="workshop">' + escHtml(p.assignedWorkshopName || '—') + '</p>' +
+                '<p style="font-size:11px; color:#888; word-break:break-all">' + escHtml(p.qrUrl || '') + '</p>' +
+              '</div>'
+            );
+          }).join('');
+          document.getElementById('grid').innerHTML = html ||
+            '<p style="text-align:center; color:#777">Geen deelnemers met QR-tokens gevonden. Klik eerst op het dashboard op &ldquo;Genereer ontbrekende QR-tokens&rdquo;.</p>';
+        });
+    }
+
+    function showLogin(err) {
+      document.getElementById('login-view').style.display = '';
+      document.getElementById('grid').innerHTML = '';
+      var e = document.getElementById('loginError');
+      if (err) { e.style.display = ''; e.textContent = err; } else { e.style.display = 'none'; }
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', function () {
+      var pw = document.getElementById('pw').value;
+      if (!pw) return;
+      setPw(pw);
+      load();
+    });
+    document.getElementById('pw').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') document.getElementById('loginBtn').click();
+    });
+
+    load();
+  </script>
+</body>
+</html>
