@@ -1,6 +1,6 @@
 # Check-in app — Kwartaalmeeting (Vercel + Firestore)
 
-Losstaande QR-code check-in applicatie voor op de dag van de kwartaalmeeting. Draait op **Vercel** en deelt **Firestore** met de aanmeld-app (`../Uitnodiging-kwartaalmeeting`). De bestaande `participants`- en `meetingStats`-collecties worden niet aangeraakt — deze app schrijft alleen naar twee nieuwe sub-collecties.
+Losstaande QR-code check-in applicatie voor op de dag van de kwartaalmeeting. Draait op **Vercel** en deelt **Firestore** met de aanmeld-app (`Uitnodiging-kwartaalmeeting/`). De bestaande `participants`- en `meetingStats`-collecties worden niet aangeraakt — deze app schrijft alleen naar twee nieuwe sub-collecties.
 
 ## Hoe het werkt
 
@@ -30,8 +30,10 @@ meetings/{meetingId}/checkins/{participantId}        — { token, checkedInAt }
 
 ## Projectstructuur
 
+De Vercel-app staat in de **repository-root** (`api/`, `public/`, `vercel.json`), zodat Vercel geen aparte submap als root hoeft te hebben.
+
 ```
-checkin-app/
+./
 ├── api/
 │   ├── health.js
 │   ├── checkin/[token].js         # GET (info) / POST (check-in)
@@ -52,7 +54,8 @@ checkin-app/
 ├── vercel.json                    # Rewrites voor mooie URLs
 ├── package.json
 ├── .env.example
-└── .gitignore
+├── .gitignore
+└── duck-demo/                     # losstaande React-demo (niet de productie-build)
 ```
 
 ## Deployment naar Vercel
@@ -64,7 +67,8 @@ Push deze repo naar GitHub (zie instructies onderaan).
 ### 2) Nieuwe Vercel project aanmaken
 
 - Ga naar [vercel.com/new](https://vercel.com/new) en importeer de repo.
-- Zet **Root Directory** op `checkin-app` (niet de root van de mono-repo).
+- Laat **Root Directory** leeg (repository root), of zet hem expliciet op `.`.
+- Had je eerder **Root Directory** op `checkin-app` staan: wijzig die naar de root en **Redeploy** (anders blijft Vercel een lege map bouwen → 404).
 - Framework preset: **Other** (Vercel detecteert `vercel.json` en de `api/`-map automatisch).
 
 ### 3) Environment variables instellen
@@ -96,7 +100,6 @@ Klik **Deploy**. Vercel bouwt en host de app.
 ## Lokaal draaien
 
 ```bash
-cd checkin-app
 npm install
 cp .env.example .env.local    # en vul de waarden in
 npx vercel dev                # vereist Vercel CLI (npm i -g vercel)
