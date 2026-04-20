@@ -82,19 +82,27 @@ body.checkin-theme main.wrap.checkin-wrap {
 .matrix-stream {
   position: absolute;
   top: -45vh;
-  color: rgba(190, 219, 255, 0.58);
-  font-size: 17px;
+  font-size: 18px;
   line-height: 1.25;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  text-shadow: 0 0 10px rgba(0, 155, 223, 0.45);
   animation-name: matrixFall;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
 }
 
-.matrix-stream:nth-child(odd) {
-  color: rgba(255, 204, 0, 0.44);
-  text-shadow: 0 0 8px rgba(255, 204, 0, 0.35);
+.matrix-char {
+  display: inline-block;
+}
+
+.zero-char {
+  color: rgba(99, 163, 236, 0.52);
+  text-shadow: 0 0 8px rgba(0, 155, 223, 0.32);
+}
+
+.duck-char {
+  color: rgba(255, 214, 92, 0.66);
+  text-shadow: 0 0 9px rgba(255, 198, 20, 0.36);
+  transform: translateY(1px);
 }
 
 @keyframes matrixFall {

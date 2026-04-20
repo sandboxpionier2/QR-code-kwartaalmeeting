@@ -60,15 +60,21 @@
         if (!matrixRoot) return;
 
         var width = window.innerWidth || 1024;
-        var streamCount = Math.max(10, Math.min(26, Math.floor(width / 54)));
+        var streamCount = Math.max(12, Math.min(28, Math.floor(width / 48)));
         var streams = '';
         for (var i = 0; i < streamCount; i++) {
           var delay = (Math.random() * 11).toFixed(2);
-          var duration = (8 + Math.random() * 12).toFixed(2);
+          var duration = (7 + Math.random() * 11).toFixed(2);
           var left = ((i + Math.random() * 0.5) / streamCount * 100).toFixed(2);
           var content = [];
-          for (var j = 0; j < 15; j++) {
-            content.push(Math.random() > 0.86 ? '🦆' : '0');
+          var duckHeavy = Math.random() > 0.55;
+          for (var j = 0; j < 17; j++) {
+            var duckChance = duckHeavy ? 0.66 : 0.24;
+            if (Math.random() < duckChance) {
+              content.push('<span class="matrix-char duck-char">🦆</span>');
+            } else {
+              content.push('<span class="matrix-char zero-char">⊘</span>');
+            }
           }
           streams +=
             '<div class="matrix-stream" style="left:' + left + '%; animation-delay:-' + delay + 's; animation-duration:' + duration + 's;">' +
