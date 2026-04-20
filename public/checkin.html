@@ -7,8 +7,15 @@
   <title>Welkom bij de kwartaalmeeting</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
-<body>
-  <main class="wrap">
+<body class="checkin-theme">
+  <div class="matrix-bg" aria-hidden="true">
+    <div id="matrixColumns" class="matrix-columns"></div>
+    <div class="floating-duck duck-a">🦆</div>
+    <div class="floating-duck duck-b">🦆</div>
+    <div class="floating-duck duck-c">🦆</div>
+  </div>
+
+  <main class="wrap checkin-wrap">
     <div id="view"></div>
   </main>
 
@@ -25,19 +32,57 @@
 
       function renderError(title, body) {
         view.innerHTML =
-          '<div class="card error">' +
+          '<div class="card error invite-card">' +
             '<div class="big-icon">⚠️</div>' +
             '<h1>' + esc(title) + '</h1>' +
             '<p>' + esc(body) + '</p>' +
           '</div>';
       }
 
+      function renderHero(title, intro) {
+        return (
+          '<div class="invite-hero">' +
+            '<div class="hero-logo" aria-hidden="true">🦆</div>' +
+            '<p class="eyebrow">Kwartaalmeeting bedrijfsvoering</p>' +
+            '<h1>' + esc(title) + '</h1>' +
+            (intro ? '<p class="small hero-intro">' + esc(intro) + '</p>' : '') +
+            '<div class="hero-meta">' +
+              '<span class="meta-pill">📅 12 mei 2026</span>' +
+              '<span class="meta-pill">🕘 08:45 - 13:00</span>' +
+              '<span class="meta-pill">📍 Stadskazerne</span>' +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      function createMatrixColumns() {
+        var matrixRoot = document.getElementById('matrixColumns');
+        if (!matrixRoot) return;
+
+        var width = window.innerWidth || 1024;
+        var streamCount = Math.max(10, Math.min(26, Math.floor(width / 54)));
+        var streams = '';
+        for (var i = 0; i < streamCount; i++) {
+          var delay = (Math.random() * 11).toFixed(2);
+          var duration = (8 + Math.random() * 12).toFixed(2);
+          var left = ((i + Math.random() * 0.5) / streamCount * 100).toFixed(2);
+          var content = [];
+          for (var j = 0; j < 15; j++) {
+            content.push(Math.random() > 0.86 ? '🦆' : '0');
+          }
+          streams +=
+            '<div class="matrix-stream" style="left:' + left + '%; animation-delay:-' + delay + 's; animation-duration:' + duration + 's;">' +
+              content.join('<br>') +
+            '</div>';
+        }
+        matrixRoot.innerHTML = streams;
+      }
+
       function renderWelcome(info, statusText, statusClass, resetData) {
         view.innerHTML =
-          '<div class="card welcome">' +
-            '<div class="big-icon">👋</div>' +
-            '<p class="eyebrow">Welkom bij de kwartaalmeeting</p>' +
-            '<h1>' + esc(info.name) + '</h1>' +
+          '<div class="card welcome invite-card">' +
+            renderHero('Nulletjes & Eendjes', 'Kwartaalmeeting Bedrijfsvoering. Een ochtend vol digitale innovatie, samenwerking en bits & bytes.') +
+            '<p class="participant-name">Welkom, ' + esc(info.name || 'collega') + '</p>' +
             '<div class="workshop-block">' +
               '<p class="eyebrow">Jouw workshop</p>' +
               '<p class="workshop-name">' + esc(info.assignedWorkshopName || info.assignedWorkshopId || 'Wordt nog bekend gemaakt') + '</p>' +
@@ -47,7 +92,7 @@
             '<div id="status" class="status ' + statusClass + '">' + esc(statusText) + '</div>' +
             (
               resetData && resetData.resetToken
-                ? '<button id="resetBtn" class="secondary" style="width:100%; margin-top:12px;">Verkeerde naam? Reset en kies opnieuw</button>'
+                ? '<button id="resetBtn" class="secondary wide mt-sm">Verkeerde naam? Reset en kies opnieuw</button>'
                 : ''
             ) +
           '</div>';
@@ -98,23 +143,20 @@
         }).join('');
 
         view.innerHTML =
-          '<div class="card welcome">' +
-            '<div class="big-icon">🎫</div>' +
-            '<p class="eyebrow">Welkom bij de kwartaalmeeting</p>' +
-            '<h1>Zoek je naam</h1>' +
-            '<p class="small">Selecteer je naam en ga door naar je persoonlijke ticket.</p>' +
-            '<label for="participantId" style="display:block; text-align:left; margin:16px 0 8px; font-weight:600;">Jouw naam</label>' +
-            '<select id="participantId" style="width:100%; padding:12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:15px;">' +
+          '<div class="card welcome invite-card">' +
+            renderHero('Nulletjes & Eendjes', 'Kwartaalmeeting Bedrijfsvoering. Een ochtend vol digitale innovatie, samenwerking en bits & bytes.') +
+            '<label for="participantId" class="field-label">Jouw naam</label>' +
+            '<select id="participantId" class="field-select">' +
               '<option value="">-- Kies je naam --</option>' +
               options +
             '</select>' +
-            '<button id="continueBtn" class="primary" style="width:100%; margin-top:14px;">Ga naar mijn ticket</button>' +
-            '<div id="formStatus" class="status pending" style="display:none"></div>' +
+            '<button id="continueBtn" class="primary wide mt-md">Ga naar mijn ticket</button>' +
+            '<div id="formStatus" class="status pending hidden"></div>' +
           '</div>';
 
         if (initialStatus && initialStatus.text) {
           var initialStatusEl = document.getElementById('formStatus');
-          initialStatusEl.style.display = '';
+          initialStatusEl.classList.remove('hidden');
           initialStatusEl.className = 'status ' + (initialStatus.className || 'info');
           initialStatusEl.textContent = initialStatus.text;
         }
@@ -123,12 +165,12 @@
           var participantId = document.getElementById('participantId').value;
           var statusEl = document.getElementById('formStatus');
           if (!participantId) {
-            statusEl.style.display = '';
+            statusEl.classList.remove('hidden');
             statusEl.className = 'status error';
             statusEl.textContent = 'Kies eerst je naam uit de lijst.';
             return;
           }
-          statusEl.style.display = '';
+          statusEl.classList.remove('hidden');
           statusEl.className = 'status pending';
           statusEl.textContent = 'Ticket laden...';
 
@@ -170,7 +212,7 @@
 
       function runSharedMode(statusMessage) {
         view.innerHTML =
-          '<div class="card">' +
+          '<div class="card invite-card">' +
             '<div class="big-icon">⏳</div>' +
             '<h1>Laden...</h1>' +
             '<p class="small">We laden de deelnemerslijst.</p>' +
@@ -227,6 +269,9 @@
 
       if (token) runTokenMode();
       else runSharedMode();
+
+      createMatrixColumns();
+      window.addEventListener('resize', createMatrixColumns);
     })();
   </script>
 </body>
