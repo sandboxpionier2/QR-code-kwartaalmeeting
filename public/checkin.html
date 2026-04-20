@@ -8,8 +8,8 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body class="checkin-theme">
-  <div class="matrix-bg" aria-hidden="true">
-    <div id="matrixColumns" class="matrix-columns"></div>
+  <canvas id="duckMatrixCanvas" aria-hidden="true" class="duck-matrix-canvas"></canvas>
+  <div class="floating-ducks" aria-hidden="true">
     <img src="/duck.png" alt="" class="floating-duck duck-a" />
     <img src="/duck.png" alt="" class="floating-duck duck-b" />
     <img src="/duck.png" alt="" class="floating-duck duck-c" />
@@ -55,33 +55,61 @@
         );
       }
 
-      function createMatrixColumns() {
-        var matrixRoot = document.getElementById('matrixColumns');
-        if (!matrixRoot) return;
+      function startDuckMatrix() {
+        var canvas = document.getElementById('duckMatrixCanvas');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
 
-        var width = window.innerWidth || 1024;
-        var streamCount = Math.max(12, Math.min(28, Math.floor(width / 48)));
-        var streams = '';
-        for (var i = 0; i < streamCount; i++) {
-          var delay = (Math.random() * 11).toFixed(2);
-          var duration = (7 + Math.random() * 11).toFixed(2);
-          var left = ((i + Math.random() * 0.5) / streamCount * 100).toFixed(2);
-          var content = [];
-          var duckHeavy = Math.random() > 0.55;
-          for (var j = 0; j < 17; j++) {
-            var duckChance = duckHeavy ? 0.66 : 0.24;
-            if (Math.random() < duckChance) {
-              content.push('<span class="matrix-char duck-char"><img src="/duck.png" alt="" class="matrix-duck-img" /></span>');
-            } else {
-              content.push('<span class="matrix-char zero-char">⊘</span>');
-            }
-          }
-          streams +=
-            '<div class="matrix-stream" style="left:' + left + '%; animation-delay:-' + delay + 's; animation-duration:' + duration + 's;">' +
-              content.join('<br>') +
-            '</div>';
+        function setCanvasSize() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
         }
-        matrixRoot.innerHTML = streams;
+        setCanvasSize();
+
+        var chars = ['0', 'DUCK'];
+        var fontSize = 24;
+        var drops = [];
+
+        var duckImg = new Image();
+        duckImg.src = '/duck.png';
+
+        function resetDrops() {
+          var columns = Math.floor(canvas.width / fontSize) + 1;
+          drops = [];
+          for (var x = 0; x < columns; x++) {
+            drops[x] = Math.random() * -100;
+          }
+        }
+        resetDrops();
+
+        function draw() {
+          ctx.fillStyle = 'rgba(0, 21, 43, 0.1)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.font = fontSize + 'px monospace';
+
+          for (var i = 0; i < drops.length; i++) {
+            var text = chars[Math.floor(Math.random() * chars.length)];
+            if (text === 'DUCK') {
+              if (duckImg.complete && duckImg.naturalWidth > 0) {
+                ctx.drawImage(duckImg, i * fontSize, drops[i] * fontSize - fontSize * 0.8, fontSize, fontSize);
+              }
+            } else {
+              ctx.fillStyle = '#009BDF';
+              ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+            }
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+              drops[i] = 0;
+            }
+            drops[i]++;
+          }
+        }
+
+        var interval = setInterval(draw, 50);
+
+        window.addEventListener('resize', function() {
+          setCanvasSize();
+          resetDrops();
+        });
       }
 
       function renderWelcome(info, statusText, statusClass, resetData) {
@@ -276,8 +304,7 @@
       if (token) runTokenMode();
       else runSharedMode();
 
-      createMatrixColumns();
-      window.addEventListener('resize', createMatrixColumns);
+      startDuckMatrix();
     })();
   </script>
 </body>
