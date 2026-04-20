@@ -333,6 +333,63 @@ body.checkin-theme main.wrap.checkin-wrap {
   box-shadow: 0 0 0 3px rgba(0, 155, 223, 0.22);
 }
 
+.name-search-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.name-search-input {
+  width: 100%;
+}
+
+.name-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: rgba(2, 18, 38, 0.98);
+  border: 1px solid rgba(124, 173, 235, 0.42);
+  border-radius: var(--radius-sm);
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: 0 10px 28px rgba(0, 6, 24, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.name-dropdown li {
+  padding: 11px 14px;
+  cursor: pointer;
+  font-size: 15px;
+  color: #d4e8ff;
+  border-bottom: 1px solid rgba(124, 173, 235, 0.1);
+  transition: background 0.1s;
+}
+
+.name-dropdown li:last-child {
+  border-bottom: none;
+}
+
+.name-dropdown li:hover,
+.name-dropdown li.active {
+  background: rgba(0, 155, 223, 0.24);
+  color: #fff;
+}
+
+.name-dropdown li.no-results {
+  color: rgba(190, 219, 255, 0.45);
+  cursor: default;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.name-dropdown li.no-results:hover {
+  background: transparent;
+}
+
 .wide {
   width: 100%;
 }

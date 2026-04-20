@@ -252,19 +252,15 @@
       }
 
       function renderSelect(participants, initialStatus) {
-        var options = (participants || []).map(function (p) {
-          return '<option value="' + esc(p.participantId).replace(/"/g, '&quot;') + '">' + esc(p.name) + '</option>';
-        }).join('');
-
         view.innerHTML =
           '<div class="card welcome invite-card">' +
             renderHero('Nulletjes & Eendjes', 'Kwartaalmeeting Bedrijfsvoering. Een ochtend vol digitale innovatie, samenwerking en bits & bytes.') +
-            '<label for="participantId" class="field-label">Jouw naam</label>' +
-            '<select id="participantId" class="field-select">' +
-              '<option value="">-- Kies je naam --</option>' +
-              options +
-            '</select>' +
-            '<button id="continueBtn" class="primary wide mt-md">Ga naar mijn ticket</button>' +
+            '<label for="nameSearchInput" class="field-label">Jouw naam</label>' +
+            '<div class="name-search-wrap" id="nameSearchWrap">' +
+              '<input type="text" id="nameSearchInput" class="field-select name-search-input" placeholder="Typ je naam om te zoeken..." autocomplete="off" autocorrect="off" spellcheck="false" />' +
+              '<ul id="nameDropdown" class="name-dropdown hidden"></ul>' +
+            '</div>' +
+            '<button id="continueBtn" class="primary wide mt-md" disabled>Ga naar mijn ticket</button>' +
             '<div id="formStatus" class="status pending hidden"></div>' +
           '</div>';
 
@@ -275,10 +271,113 @@
           initialStatusEl.textContent = initialStatus.text;
         }
 
-        document.getElementById('continueBtn').addEventListener('click', function () {
-          var participantId = document.getElementById('participantId').value;
+        var selectedParticipantId = '';
+        var input = document.getElementById('nameSearchInput');
+        var dropdown = document.getElementById('nameDropdown');
+        var continueBtn = document.getElementById('continueBtn');
+        var activeIndex = -1;
+
+        function filterParticipants(query) {
+          var q = query.trim().toLowerCase();
+          if (!q) return [];
+          return (participants || []).filter(function (p) {
+            return p.name.toLowerCase().indexOf(q) !== -1;
+          });
+        }
+
+        function setActiveItem(items, idx) {
+          items.forEach(function (li, i) {
+            li.classList.toggle('active', i === idx);
+          });
+          if (items[idx]) {
+            items[idx].scrollIntoView({ block: 'nearest' });
+          }
+        }
+
+        function showDropdown(filtered) {
+          if (filtered.length === 0) {
+            dropdown.innerHTML = '<li class="no-results">Geen resultaten gevonden</li>';
+          } else {
+            dropdown.innerHTML = filtered.map(function (p) {
+              return '<li data-id="' + esc(p.participantId).replace(/"/g, '&quot;') + '">' + esc(p.name) + '</li>';
+            }).join('');
+          }
+          dropdown.classList.remove('hidden');
+          activeIndex = -1;
+        }
+
+        function hideDropdown() {
+          dropdown.classList.add('hidden');
+          activeIndex = -1;
+        }
+
+        function selectParticipant(p) {
+          selectedParticipantId = p.participantId;
+          input.value = p.name;
+          hideDropdown();
+          continueBtn.disabled = false;
+        }
+
+        function clearSelection() {
+          selectedParticipantId = '';
+          continueBtn.disabled = true;
+        }
+
+        input.addEventListener('input', function () {
+          clearSelection();
+          var val = input.value;
+          if (!val.trim()) { hideDropdown(); return; }
+          showDropdown(filterParticipants(val));
+        });
+
+        input.addEventListener('focus', function () {
+          if (input.value.trim() && !selectedParticipantId) {
+            showDropdown(filterParticipants(input.value));
+          }
+        });
+
+        input.addEventListener('keydown', function (e) {
+          var items = dropdown.querySelectorAll('li:not(.no-results)');
+          if (dropdown.classList.contains('hidden') || items.length === 0) return;
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, items.length - 1);
+            setActiveItem(items, activeIndex);
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            setActiveItem(items, activeIndex);
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex >= 0 && items[activeIndex]) {
+              var id = items[activeIndex].getAttribute('data-id');
+              var match = (participants || []).filter(function (x) { return x.participantId === id; })[0];
+              if (match) selectParticipant(match);
+            }
+          } else if (e.key === 'Escape') {
+            hideDropdown();
+          }
+        });
+
+        dropdown.addEventListener('mousedown', function (e) {
+          var li = e.target;
+          while (li && li.tagName !== 'LI') li = li.parentElement;
+          if (!li || li.classList.contains('no-results')) return;
+          e.preventDefault();
+          var id = li.getAttribute('data-id');
+          var match = (participants || []).filter(function (x) { return x.participantId === id; })[0];
+          if (match) selectParticipant(match);
+        });
+
+        document.addEventListener('click', function onClickOutside(e) {
+          var wrap = document.getElementById('nameSearchWrap');
+          if (!wrap) { document.removeEventListener('click', onClickOutside); return; }
+          if (!wrap.contains(e.target)) hideDropdown();
+        });
+
+        continueBtn.addEventListener('click', function () {
           var statusEl = document.getElementById('formStatus');
-          if (!participantId) {
+          if (!selectedParticipantId) {
             statusEl.classList.remove('hidden');
             statusEl.className = 'status error';
             statusEl.textContent = 'Kies eerst je naam uit de lijst.';
@@ -291,7 +390,7 @@
           fetch('/api/checkin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ participantId: participantId })
+            body: JSON.stringify({ participantId: selectedParticipantId })
           })
             .then(function (r) {
               return r.json().then(function (j) { return { status: r.status, body: j }; });
@@ -303,8 +402,7 @@
                 return;
               }
               var info = res.body.participant || {};
-              var text;
-              var cls;
+              var text, cls;
               if (res.body.alreadyCheckedIn) {
                 text = '✓ Je was al ingecheckt. Veel plezier!';
                 cls = 'info';
