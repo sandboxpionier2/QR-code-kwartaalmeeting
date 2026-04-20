@@ -40,9 +40,14 @@
       }
 
       function renderHero(title, intro) {
+        // Logo wordt na render verwerkt via stripWhiteBorder (id hero-logo-img)
+        setTimeout(function() {
+          var el = document.getElementById('hero-logo-img');
+          if (el) applyStrippedSrc(el, '/logo.png');
+        }, 0);
         return (
           '<div class="invite-hero">' +
-            '<img src="/logo.png" alt="Kwartaalmeeting logo" class="hero-logo" />' +
+            '<img id="hero-logo-img" src="/logo.png" alt="Kwartaalmeeting logo" class="hero-logo" />' +
             '<p class="eyebrow">Kwartaalmeeting bedrijfsvoering</p>' +
             '<h1>' + esc(title) + '</h1>' +
             (intro ? '<p class="small hero-intro">' + esc(intro) + '</p>' : '') +
@@ -54,6 +59,77 @@
           '</div>'
         );
       }
+
+      // Exact overgenomen uit Uitnodiging-kwartaalmeeting/src/lib/stripWhiteBorder.ts
+      function stripWhiteBorderToDataUrl(src, whiteThreshold) {
+        whiteThreshold = whiteThreshold || 245;
+        return new Promise(function(resolve, reject) {
+          var img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = function() {
+            var width = img.naturalWidth || img.width;
+            var height = img.naturalHeight || img.height;
+            var offscreen = document.createElement('canvas');
+            offscreen.width = width;
+            offscreen.height = height;
+            var ctx = offscreen.getContext('2d', { willReadFrequently: true });
+            if (!ctx) { resolve(src); return; }
+            ctx.drawImage(img, 0, 0, width, height);
+            var imageData = ctx.getImageData(0, 0, width, height);
+            var data = imageData.data;
+            var w = width, h = height;
+            var visited = new Uint8Array(w * h);
+            var toProcess = [];
+            function pushIfSeed(x, y) {
+              if (x < 0 || x >= w || y < 0 || y >= h) return;
+              var idx = y * w + x;
+              if (visited[idx]) return;
+              var p = idx * 4;
+              if (data[p+3] === 0) { visited[idx] = 1; return; }
+              if (data[p] >= whiteThreshold && data[p+1] >= whiteThreshold && data[p+2] >= whiteThreshold) {
+                visited[idx] = 1; toProcess.push(idx);
+              }
+            }
+            pushIfSeed(0, 0); pushIfSeed(w-1, 0); pushIfSeed(0, h-1); pushIfSeed(w-1, h-1);
+            while (toProcess.length > 0) {
+              var idx = toProcess.pop();
+              var p = idx * 4;
+              if (data[p] >= whiteThreshold && data[p+1] >= whiteThreshold && data[p+2] >= whiteThreshold) {
+                data[p+3] = 0;
+              }
+              var x = idx % w, y = Math.floor(idx / w);
+              function tryNeighbour(n) {
+                if (!visited[n]) {
+                  visited[n] = 1;
+                  var np = n * 4;
+                  if (data[np+3] !== 0 && data[np] >= whiteThreshold && data[np+1] >= whiteThreshold && data[np+2] >= whiteThreshold) {
+                    toProcess.push(n);
+                  }
+                }
+              }
+              if (x > 0)   tryNeighbour(idx - 1);
+              if (x < w-1) tryNeighbour(idx + 1);
+              if (y > 0)   tryNeighbour(idx - w);
+              if (y < h-1) tryNeighbour(idx + w);
+            }
+            ctx.putImageData(imageData, 0, 0);
+            resolve(offscreen.toDataURL('image/png'));
+          };
+          img.onerror = function() { resolve(src); };
+          img.src = src;
+        });
+      }
+
+      function applyStrippedSrc(imgEl, src) {
+        stripWhiteBorderToDataUrl(src, 245).then(function(dataUrl) {
+          imgEl.src = dataUrl;
+        });
+      }
+
+      // Pas floating ducks aan zodra DOM klaar is
+      applyStrippedSrc(document.querySelector('.duck-a'), '/duck.png');
+      applyStrippedSrc(document.querySelector('.duck-b'), '/duck.png');
+      applyStrippedSrc(document.querySelector('.duck-c'), '/duck.png');
 
       function startDuckMatrix() {
         var canvas = document.getElementById('duckMatrixCanvas');
@@ -71,7 +147,11 @@
         var drops = [];
 
         var duckImg = new Image();
-        duckImg.src = '/duck.png';
+        duckImg.crossOrigin = 'anonymous';
+        stripWhiteBorderToDataUrl('/duck.png', 245).then(function(dataUrl) {
+          duckImg.src = dataUrl;
+        });
+        duckImg.src = '/duck.png'; // fallback zodat canvas meteen kan beginnen
 
         function resetDrops() {
           var columns = Math.floor(canvas.width / fontSize) + 1;
