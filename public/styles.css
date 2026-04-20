@@ -100,9 +100,15 @@ body.checkin-theme main.wrap.checkin-wrap {
 }
 
 .duck-char {
-  color: rgba(255, 214, 92, 0.66);
-  text-shadow: 0 0 9px rgba(255, 198, 20, 0.36);
   transform: translateY(1px);
+}
+
+.matrix-duck-img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  opacity: 0.72;
+  filter: drop-shadow(0 0 6px rgba(255, 198, 20, 0.24));
 }
 
 @keyframes matrixFall {
@@ -113,15 +119,17 @@ body.checkin-theme main.wrap.checkin-wrap {
 
 .floating-duck {
   position: absolute;
-  font-size: 42px;
-  opacity: 0.14;
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+  opacity: 0.18;
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.25));
   animation: floatDuck 5.4s ease-in-out infinite;
 }
 
 .duck-a { top: 10%; left: 8%; }
-.duck-b { bottom: 16%; right: 10%; animation-delay: 0.9s; }
-.duck-c { top: 36%; right: 24%; animation-delay: 1.8s; font-size: 34px; }
+.duck-b { bottom: 16%; right: 10%; animation-delay: 0.9s; width: 98px; height: 98px; }
+.duck-c { top: 36%; right: 24%; animation-delay: 1.8s; width: 76px; height: 76px; }
 
 @keyframes floatDuck {
   0%, 100% { transform: translateY(0) rotate(0deg); }
@@ -173,16 +181,11 @@ body.checkin-theme main.wrap.checkin-wrap {
 }
 
 .hero-logo {
-  width: 108px;
-  height: 108px;
+  width: 136px;
+  height: 136px;
   margin: 0 auto 12px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-size: 56px;
-  background: radial-gradient(circle at 30% 30%, #ffe695 0%, #ffc145 55%, #ef9c1b 100%);
-  border: 4px solid #f8d87a;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  object-fit: contain;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.28));
 }
 
 .hero-intro {
@@ -529,9 +532,8 @@ body.checkin-theme a.secondary {
   }
 
   .hero-logo {
-    width: 86px;
-    height: 86px;
-    font-size: 46px;
+    width: 104px;
+    height: 104px;
   }
 
   .invite-hero h1 {

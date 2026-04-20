@@ -10,9 +10,9 @@
 <body class="checkin-theme">
   <div class="matrix-bg" aria-hidden="true">
     <div id="matrixColumns" class="matrix-columns"></div>
-    <div class="floating-duck duck-a">🦆</div>
-    <div class="floating-duck duck-b">🦆</div>
-    <div class="floating-duck duck-c">🦆</div>
+    <img src="/duck.png" alt="" class="floating-duck duck-a" />
+    <img src="/duck.png" alt="" class="floating-duck duck-b" />
+    <img src="/duck.png" alt="" class="floating-duck duck-c" />
   </div>
 
   <main class="wrap checkin-wrap">
@@ -42,7 +42,7 @@
       function renderHero(title, intro) {
         return (
           '<div class="invite-hero">' +
-            '<div class="hero-logo" aria-hidden="true">🦆</div>' +
+            '<img src="/logo.png" alt="Kwartaalmeeting logo" class="hero-logo" />' +
             '<p class="eyebrow">Kwartaalmeeting bedrijfsvoering</p>' +
             '<h1>' + esc(title) + '</h1>' +
             (intro ? '<p class="small hero-intro">' + esc(intro) + '</p>' : '') +
@@ -71,7 +71,7 @@
           for (var j = 0; j < 17; j++) {
             var duckChance = duckHeavy ? 0.66 : 0.24;
             if (Math.random() < duckChance) {
-              content.push('<span class="matrix-char duck-char">🦆</span>');
+              content.push('<span class="matrix-char duck-char"><img src="/duck.png" alt="" class="matrix-duck-img" /></span>');
             } else {
               content.push('<span class="matrix-char zero-char">⊘</span>');
             }
