@@ -276,6 +276,11 @@ body.checkin-theme main.wrap.checkin-wrap {
   color: #c7e2ff;
 }
 
+.invite-card .info-block p {
+  color: #e8f4ff;
+  font-weight: 600;
+}
+
 .route-image-block {
   padding: 10px;
 }
