@@ -32,7 +32,7 @@
           '</div>';
       }
 
-      function renderWelcome(info, statusText, statusClass) {
+      function renderWelcome(info, statusText, statusClass, resetData) {
         view.innerHTML =
           '<div class="card welcome">' +
             '<div class="big-icon">👋</div>' +
@@ -45,10 +45,54 @@
             (info.workshopInfo ? '<div class="info-block"><p>' + esc(info.workshopInfo) + '</p></div>' : '') +
             (info.welcomeInfoText ? '<div class="info-block"><p>' + esc(info.welcomeInfoText) + '</p></div>' : '') +
             '<div id="status" class="status ' + statusClass + '">' + esc(statusText) + '</div>' +
+            (
+              resetData && resetData.resetToken
+                ? '<button id="resetBtn" class="secondary" style="width:100%; margin-top:12px;">Verkeerde naam? Reset en kies opnieuw</button>'
+                : ''
+            ) +
           '</div>';
+
+        if (resetData && resetData.resetToken) {
+          document.getElementById('resetBtn').addEventListener('click', function () {
+            var statusEl = document.getElementById('status');
+            var resetBtn = document.getElementById('resetBtn');
+            resetBtn.disabled = true;
+            statusEl.className = 'status pending';
+            statusEl.textContent = 'Check-in resetten...';
+
+            fetch('/api/checkin/reset', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                participantId: resetData.participantId,
+                resetToken: resetData.resetToken
+              })
+            })
+              .then(function (r) {
+                return r.json().then(function (j) { return { status: r.status, body: j }; });
+              })
+              .then(function (res) {
+                if (res.status >= 400 || !res.body.ok) {
+                  resetBtn.disabled = false;
+                  statusEl.className = 'status error';
+                  statusEl.textContent = (res.body && res.body.error) || 'Reset mislukt.';
+                  return;
+                }
+                runSharedMode({
+                  className: 'success',
+                  text: 'Reset gelukt. Kies nu de juiste naam.'
+                });
+              })
+              .catch(function () {
+                resetBtn.disabled = false;
+                statusEl.className = 'status error';
+                statusEl.textContent = 'Geen verbinding met de server.';
+              });
+          });
+        }
       }
 
-      function renderSelect(participants) {
+      function renderSelect(participants, initialStatus) {
         var options = (participants || []).map(function (p) {
           return '<option value="' + esc(p.participantId).replace(/"/g, '&quot;') + '">' + esc(p.name) + '</option>';
         }).join('');
@@ -67,6 +111,13 @@
             '<button id="continueBtn" class="primary" style="width:100%; margin-top:14px;">Ga naar mijn ticket</button>' +
             '<div id="formStatus" class="status pending" style="display:none"></div>' +
           '</div>';
+
+        if (initialStatus && initialStatus.text) {
+          var initialStatusEl = document.getElementById('formStatus');
+          initialStatusEl.style.display = '';
+          initialStatusEl.className = 'status ' + (initialStatus.className || 'info');
+          initialStatusEl.textContent = initialStatus.text;
+        }
 
         document.getElementById('continueBtn').addEventListener('click', function () {
           var participantId = document.getElementById('participantId').value;
@@ -105,7 +156,10 @@
                 text = '✓ Inchecken gelukt. Veel plezier!';
                 cls = 'success';
               }
-              renderWelcome(info, text, cls);
+              renderWelcome(info, text, cls, {
+                participantId: info.participantId,
+                resetToken: res.body.resetToken
+              });
             })
             .catch(function () {
               statusEl.className = 'status error';
@@ -114,7 +168,7 @@
         });
       }
 
-      function runSharedMode() {
+      function runSharedMode(statusMessage) {
         view.innerHTML =
           '<div class="card">' +
             '<div class="big-icon">⏳</div>' +
@@ -131,7 +185,7 @@
               renderError('Laden mislukt', (res.body && res.body.error) || 'Kan de deelnemerslijst niet ophalen.');
               return;
             }
-            renderSelect(res.body.participants || []);
+            renderSelect(res.body.participants || [], statusMessage || null);
           })
           .catch(function () {
             renderError('Geen verbinding', 'Kan de server niet bereiken. Controleer je verbinding en probeer opnieuw.');

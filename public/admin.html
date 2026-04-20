@@ -72,11 +72,13 @@
                 <th>Workshop</th>
                 <th>Status</th>
                 <th>Check-in tijd</th>
+                <th>Actie</th>
               </tr>
             </thead>
             <tbody></tbody>
           </table>
         </div>
+        <div id="tableActionStatus" style="margin-top:8px; color:var(--muted); font-size:13px;"></div>
       </div>
 
     </div>
@@ -245,13 +247,64 @@
           ? '<span class="pill ok">Ingecheckt</span>'
           : '<span class="pill pending">Wacht</span>';
         var time = p.checkedInAt ? new Date(p.checkedInAt).toLocaleTimeString('nl-NL') : '—';
+        var actionBtn = p.checkedInAt
+          ? '<button class="secondary reset-checkin-btn" data-participant-id="' + escAttr(p.participantId) + '" style="padding:6px 10px; font-size:12px;">Reset</button>'
+          : '—';
         return '<tr>' +
           '<td>' + escHtml(p.name) + '</td>' +
           '<td>' + escHtml(p.assignedWorkshopName || '—') + '</td>' +
           '<td>' + statusPill + '</td>' +
           '<td>' + time + '</td>' +
+          '<td>' + actionBtn + '</td>' +
           '</tr>';
       }).join('');
+    }
+
+    function setTableActionStatus(text) {
+      $('tableActionStatus').textContent = text || '';
+    }
+
+    function resetParticipantCheckin(participantId, buttonEl) {
+      var participant = state.participants.find(function (p) { return p.participantId === participantId; });
+      var participantName = participant && participant.name ? participant.name : 'deze deelnemer';
+      if (!window.confirm('Weet je zeker dat je check-in wilt resetten voor ' + participantName + '?')) {
+        return;
+      }
+
+      var originalText = buttonEl.textContent;
+      buttonEl.disabled = true;
+      buttonEl.textContent = 'Resetten...';
+      setTableActionStatus('');
+
+      fetch('/api/admin/reset-checkin', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ participantId: participantId }),
+      })
+        .then(function (r) {
+          if (r.status === 401) {
+            clearPw();
+            showLogin('Sessie verlopen. Log opnieuw in.');
+            return null;
+          }
+          return r.json().then(function (j) { return { status: r.status, body: j }; });
+        })
+        .then(function (res) {
+          if (!res) return;
+          if (res.status >= 400 || !res.body.ok) {
+            buttonEl.disabled = false;
+            buttonEl.textContent = originalText;
+            setTableActionStatus((res.body && res.body.error) || 'Reset mislukt.');
+            return;
+          }
+          setTableActionStatus('Check-in gereset voor ' + participantName + '.');
+          fetchData();
+        })
+        .catch(function () {
+          buttonEl.disabled = false;
+          buttonEl.textContent = originalText;
+          setTableActionStatus('Geen verbinding met de server.');
+        });
     }
 
     function statCard(label, value, pct) {
@@ -330,6 +383,13 @@
     ['filterInput', 'workshopFilter', 'statusFilter'].forEach(function (id) {
       $(id).addEventListener('input', renderRows);
       $(id).addEventListener('change', renderRows);
+    });
+    $('participantsTable').addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('.reset-checkin-btn') : null;
+      if (!btn) return;
+      var participantId = btn.getAttribute('data-participant-id') || '';
+      if (!participantId) return;
+      resetParticipantCheckin(participantId, btn);
     });
 
     // Auto-refresh iedere 15s

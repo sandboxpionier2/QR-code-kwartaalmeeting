@@ -4,6 +4,7 @@ import {
   markCheckedIn,
   workshopName,
 } from '../../lib/checkin.js';
+import { createCheckinResetToken } from '../../lib/checkin-reset-token.js';
 import { MEETING_ID, WELCOME_INFO_TEXT } from '../../lib/config.js';
 
 function participantPayload(participant) {
@@ -48,6 +49,7 @@ export default async function handler(req, res) {
         ok: true,
         alreadyCheckedIn: result.alreadyCheckedIn,
         checkedInAt: result.checkedInAt,
+        resetToken: result.alreadyCheckedIn ? null : createCheckinResetToken(participantId),
         participant: participantPayload(participant),
       });
     }

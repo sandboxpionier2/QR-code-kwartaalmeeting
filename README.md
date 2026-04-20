@@ -7,6 +7,7 @@ Losstaande QR-code check-in applicatie voor op de dag van de kwartaalmeeting. Dr
 - Er is één gedeelde QR-code die verwijst naar `PUBLIC_URL/checkin`.
 - Bij scannen ziet de deelnemer een welkom-scherm en kiest die zijn/haar naam uit de deelnemerslijst.
 - Daarna komt de deelnemer op een persoonlijk ticket met toegewezen workshop en extra info.
+- Klikt iemand per ongeluk de verkeerde naam aan, dan kan die direct resetten en opnieuw kiezen.
 - Een admin-dashboard op `/admin` (wachtwoord) toont live wie al binnen is, per workshop.
 - Een printbare pagina op `/admin/qr` bevat de gedeelde QR-code op A4.
 
@@ -82,6 +83,7 @@ Kopieer deze uit het aanmeld-app project in Vercel (zelfde waarden — dan wijze
 | of `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` | alternatief |
 | `MEETING_ID` | `default` (of wat je in de aanmeld-app gebruikt) |
 | `ADMIN_PASSWORD` | Wachtwoord voor `/admin` |
+| `CHECKIN_RESET_SECRET` | *(aanbevolen)* geheim voor tijdelijke reset-tokens na een foutieve naamkeuze |
 | `WELCOME_INFO_TEXT` | Algemene tekst op het welkomstscherm |
 | `PUBLIC_URL` | *(optioneel)* custom domain; valt anders terug op Vercel's URL |
 
@@ -121,6 +123,7 @@ npx vercel dev                # vereist Vercel CLI (npm i -g vercel)
 | `/checkin` | GET (HTML) | Gedeelde check-in pagina (rewrite naar `checkin.html`) |
 | `/api/checkin` | GET | Haalt deelnemerslijst op voor naamselectie |
 | `/api/checkin` | POST | Registreert check-in op basis van geselecteerde deelnemer |
+| `/api/checkin/reset` | POST | Draait net uitgevoerde shared check-in terug met tijdelijk reset-token |
 | `/api/qr/shared` | GET | PNG QR-afbeelding voor gedeelde check-in |
 | `/checkin/:token` | GET (HTML) | Legacy persoonlijke check-in URL |
 | `/api/checkin/:token` | POST/GET | Legacy token-flow (backwards compatible) |
@@ -129,6 +132,7 @@ npx vercel dev                # vereist Vercel CLI (npm i -g vercel)
 | `/admin/qr` | GET (HTML) | Print-pagina (rewrite naar `qr-print.html`) |
 | `/api/admin/participants` | GET | Dashboard-data (wachtwoord) |
 | `/api/admin/generate-tokens` | POST | Tokens aanmaken voor deelnemers zonder (wachtwoord) |
+| `/api/admin/reset-checkin` | POST | Reset check-in van een deelnemer vanuit dashboard (wachtwoord) |
 | `/api/health` | GET | Healthcheck |
 
 Admin-endpoints verwachten `x-admin-password` header of `?password=` in de query.
