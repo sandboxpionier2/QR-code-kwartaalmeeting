@@ -64,6 +64,11 @@
           </select>
         </div>
 
+        <div style="margin-bottom:8px; display:flex; justify-content:flex-end; gap:8px;">
+          <button class="secondary" id="exportExcelBtn" title="Exporteer de huidige gefilterde lijst als Excel-bestand">&#x1F4C5; Exporteer Excel</button>
+          <button class="secondary" id="exportPdfBtn" title="Exporteer de huidige gefilterde lijst als PDF">&#x1F4C4; Exporteer PDF</button>
+        </div>
+
         <div class="table-wrap">
           <table class="participants" id="participantsTable">
             <thead>
@@ -83,6 +88,11 @@
 
     </div>
   </main>
+
+  <!-- Export libraries (loaded async; only needed when export buttons are clicked) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
   <script>
     var STORAGE_KEY = 'checkin-admin-pw';
@@ -229,18 +239,21 @@
       });
     }
 
-    function renderRows() {
+    function getFilteredRows() {
       var q = ($('filterInput').value || '').toLowerCase().trim();
       var wsId = $('workshopFilter').value;
       var status = $('statusFilter').value;
-      var rows = state.participants.filter(function (p) {
+      return state.participants.filter(function (p) {
         if (q && (p.name || '').toLowerCase().indexOf(q) === -1) return false;
         if (wsId && p.assignedWorkshopId !== wsId) return false;
         if (status === 'in' && !p.checkedInAt) return false;
         if (status === 'out' && p.checkedInAt) return false;
         return true;
       });
+    }
 
+    function renderRows() {
+      var rows = getFilteredRows();
       var tbody = $('participantsTable').querySelector('tbody');
       tbody.innerHTML = rows.map(function (p) {
         var statusPill = p.checkedInAt
@@ -325,6 +338,76 @@
       return escHtml(s).replace(/"/g, '&quot;');
     }
 
+    function formatCheckinTime(ts) {
+      return ts ? new Date(ts).toLocaleString('nl-NL') : '—';
+    }
+
+    function buildExportRows() {
+      return getFilteredRows().map(function (p) {
+        return [
+          p.name || '',
+          p.assignedWorkshopName || '—',
+          p.checkedInAt ? 'Ingecheckt' : 'Wacht',
+          formatCheckinTime(p.checkedInAt),
+        ];
+      });
+    }
+
+    function exportExcel() {
+      if (typeof XLSX === 'undefined') {
+        alert('Excel-bibliotheek nog niet geladen. Probeer het opnieuw.');
+        return;
+      }
+      var headers = ['Naam', 'Workshop', 'Status', 'Check-in tijd'];
+      var data = [headers].concat(buildExportRows());
+      var ws = XLSX.utils.aoa_to_sheet(data);
+      ws['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 14 }, { wch: 20 }];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Check-in');
+      var filename = 'checkin-' + new Date().toISOString().slice(0, 10) + '.xlsx';
+      XLSX.writeFile(wb, filename);
+    }
+
+    function exportPDF() {
+      if (typeof window.jspdf === 'undefined') {
+        alert('PDF-bibliotheek nog niet geladen. Probeer het opnieuw.');
+        return;
+      }
+      var doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      var s = state.stats || { totalParticipants: 0, totalCheckedIn: 0, byWorkshop: [] };
+      var meetingLabel = state.meetingId || 'kwartaalmeeting';
+      var generated = new Date().toLocaleString('nl-NL');
+
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text('Check-in overzicht — ' + meetingLabel, 14, 18);
+
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      doc.text('Gegenereerd: ' + generated, 14, 25);
+      doc.text('Ingecheckt: ' + s.totalCheckedIn + ' / ' + s.totalParticipants, 14, 30);
+
+      var statsLine = (s.byWorkshop || []).map(function (w) {
+        return w.workshopName + ': ' + w.totalCheckedIn + '/' + w.totalAssigned;
+      }).join('   ·   ');
+      if (statsLine) {
+        doc.text(statsLine, 14, 35);
+      }
+
+      doc.autoTable({
+        head: [['Naam', 'Workshop', 'Status', 'Check-in tijd']],
+        body: buildExportRows(),
+        startY: statsLine ? 40 : 35,
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [30, 30, 30], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 45 }, 2: { cellWidth: 28 }, 3: { cellWidth: 45 } },
+      });
+
+      var filename = 'checkin-' + new Date().toISOString().slice(0, 10) + '.pdf';
+      doc.save(filename);
+    }
+
     // Wire up
     $('loginBtn').addEventListener('click', function () {
       var pw = $('pw').value;
@@ -380,6 +463,8 @@
       saveChecklistState({});
       renderChecklist();
     });
+    $('exportExcelBtn').addEventListener('click', exportExcel);
+    $('exportPdfBtn').addEventListener('click', exportPDF);
     ['filterInput', 'workshopFilter', 'statusFilter'].forEach(function (id) {
       $(id).addEventListener('input', renderRows);
       $(id).addEventListener('change', renderRows);
