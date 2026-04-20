@@ -39,7 +39,11 @@
           '</div>';
       }
 
-      function renderHero(title, intro) {
+      function renderHero(title, intro, meta) {
+        var heroMeta = meta || {};
+        var dateText = heroMeta.date || '12 mei 2026';
+        var timeText = heroMeta.time || '08:45 - 13:00';
+        var locationText = heroMeta.location || 'Stadskazerne';
         // Logo wordt na render verwerkt via stripWhiteBorder (id hero-logo-img)
         setTimeout(function() {
           var el = document.getElementById('hero-logo-img');
@@ -52,12 +56,41 @@
             '<h1>' + esc(title) + '</h1>' +
             (intro ? '<p class="small hero-intro">' + esc(intro) + '</p>' : '') +
             '<div class="hero-meta">' +
-              '<span class="meta-pill">📅 12 mei 2026</span>' +
-              '<span class="meta-pill">🕘 08:45 - 13:00</span>' +
-              '<span class="meta-pill">📍 Stadskazerne</span>' +
+              '<span class="meta-pill">📅 ' + esc(dateText) + '</span>' +
+              '<span class="meta-pill">🕘 ' + esc(timeText) + '</span>' +
+              '<span class="meta-pill">📍 ' + esc(locationText) + '</span>' +
             '</div>' +
           '</div>'
         );
+      }
+
+      function getWorkshopDetails(info) {
+        var workshopId = String(info.assignedWorkshopId || '').toLowerCase();
+        if (workshopId === 'dienstverlening') {
+          return {
+            location: 'Stomme van Campen',
+            extraInfo: 'Dit is een externe ruimte. Zie de afbeelding voor de route.',
+            routeImageSrc: '/route-zilverveer.png',
+            routeImageAlt: 'Looproute naar Stomme van Campen',
+          };
+        }
+        if (workshopId === 'innovatie') {
+          return {
+            location: 'Johan van Mulkenzaal',
+            extraInfo: 'Deze zaal bevindt zich op deze verdieping. Loop door de deuren rechtdoor en je bent er.',
+            routeImageSrc: '',
+            routeImageAlt: '',
+          };
+        }
+        if (workshopId === 'datafin') {
+          return {
+            location: 'Dirk van Sliedregtzaal',
+            extraInfo: 'Dat is de zaal waar jij je nu bevindt.',
+            routeImageSrc: '',
+            routeImageAlt: '',
+          };
+        }
+        return { location: '', extraInfo: '', routeImageSrc: '', routeImageAlt: '' };
       }
 
       // Exact overgenomen uit Uitnodiging-kwartaalmeeting/src/lib/stripWhiteBorder.ts
@@ -193,14 +226,34 @@
       }
 
       function renderWelcome(info, statusText, statusClass, resetData) {
+        var workshopDetails = getWorkshopDetails(info || {});
         view.innerHTML =
           '<div class="card welcome invite-card">' +
-            renderHero('Nulletjes & Eendjes', 'Kwartaalmeeting Bedrijfsvoering. Een ochtend vol digitale innovatie, samenwerking en bits & bytes.') +
+            renderHero(
+              'Nulletjes & Eendjes',
+              'Kwartaalmeeting Bedrijfsvoering. Een ochtend vol digitale innovatie, samenwerking en bits & bytes.',
+              {
+                date: '12 mei 2026',
+                time: '10.20 - 10.40',
+                location: workshopDetails.location || 'Stadskazerne',
+              }
+            ) +
             '<p class="participant-name">Welkom, ' + esc(info.name || 'collega') + '</p>' +
             '<div class="workshop-block">' +
               '<p class="eyebrow">Jouw workshop</p>' +
               '<p class="workshop-name">' + esc(info.assignedWorkshopName || info.assignedWorkshopId || 'Wordt nog bekend gemaakt') + '</p>' +
             '</div>' +
+            (
+              workshopDetails.location
+                ? '<div class="info-block"><p><strong>Tijd:</strong> 10.20 - 10.40<br /><strong>Locatie:</strong> ' + esc(workshopDetails.location) + '</p></div>'
+                : ''
+            ) +
+            (workshopDetails.extraInfo ? '<div class="info-block"><p>' + esc(workshopDetails.extraInfo) + '</p></div>' : '') +
+            (
+              workshopDetails.routeImageSrc
+                ? '<div class="info-block route-image-block"><img src="' + esc(workshopDetails.routeImageSrc) + '" alt="' + esc(workshopDetails.routeImageAlt || 'Route afbeelding') + '" class="route-image" /></div>'
+                : ''
+            ) +
             (info.workshopInfo ? '<div class="info-block"><p>' + esc(info.workshopInfo) + '</p></div>' : '') +
             (info.welcomeInfoText ? '<div class="info-block"><p>' + esc(info.welcomeInfoText) + '</p></div>' : '') +
             '<div id="status" class="status ' + statusClass + '">' + esc(statusText) + '</div>' +

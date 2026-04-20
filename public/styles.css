@@ -276,6 +276,19 @@ body.checkin-theme main.wrap.checkin-wrap {
   color: #c7e2ff;
 }
 
+.route-image-block {
+  padding: 10px;
+}
+
+.route-image {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(124, 173, 235, 0.35);
+}
+
 .status {
   margin-top: 20px;
   padding: 12px 14px;
@@ -598,6 +611,14 @@ body.checkin-theme a.secondary {
 
   .hero-intro {
     font-size: 18px;
+  }
+
+  .route-image-block {
+    padding: 8px;
+  }
+
+  .route-image {
+    max-width: 320px;
   }
 }
 
